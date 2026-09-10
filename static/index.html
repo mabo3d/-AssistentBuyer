@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AssistentBuyer">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg">
+<title>AssistentBuyer</title>
+<style>
+:root{
+  --bg:#f5f5f7;--surface:rgba(255,255,255,.78);--surface2:#fff;--text:#1d1d1f;
+  --muted:#6e6e73;--line:rgba(0,0,0,.08);--blue:#007aff;--green:#34c759;
+  --orange:#ff9500;--red:#ff3b30;--purple:#af52de;--shadow:0 16px 50px rgba(0,0,0,.08);
+  --radius:24px;
+}
+[data-theme="dark"]{
+  --bg:#000;--surface:rgba(28,28,30,.82);--surface2:#1c1c1e;--text:#f5f5f7;
+  --muted:#98989d;--line:rgba(255,255,255,.10);--shadow:0 16px 60px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+body{background:radial-gradient(circle at 12% -10%,rgba(0,122,255,.12),transparent 35rem),var(--bg)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.shell{min-height:100vh;display:grid;grid-template-columns:235px minmax(0,1fr)}
+.sidebar{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:rgba(245,245,247,.68);backdrop-filter:blur(28px);z-index:10}
+[data-theme="dark"] .sidebar{background:rgba(0,0,0,.68)}
+.brand{display:flex;align-items:center;gap:11px;padding:7px 10px 24px}
+.logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:white;font-weight:900;background:linear-gradient(145deg,#0a84ff,#5e5ce6)}
+.brand b{letter-spacing:-.02em}
+.nav{display:grid;gap:5px}
+.nav button{border:0;background:transparent;color:var(--text);text-align:left;padding:11px 12px;border-radius:12px;display:flex;align-items:center;gap:10px}
+.nav button.active{background:var(--surface2);box-shadow:0 1px 8px rgba(0,0,0,.06);font-weight:700}
+.sidebar-foot{position:absolute;left:14px;right:14px;bottom:18px}
+.content{padding:28px clamp(18px,3vw,42px) 50px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px}
+h1{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.055em;margin:0}
+.sub{color:var(--muted);margin-top:4px}
+.actions{display:flex;gap:8px;align-items:center}
+.iconbtn,.btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:9px 12px;font-weight:700;backdrop-filter:blur(20px)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.good{background:var(--green);border-color:var(--green);color:#fff}
+.btn.danger{color:var(--red)}
+.pill{padding:7px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.segment{display:inline-flex;background:var(--surface);padding:4px;border-radius:13px;border:1px solid var(--line)}
+.segment button{border:0;background:transparent;color:var(--muted);padding:7px 12px;border-radius:9px;font-weight:700}
+.segment button.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 8px rgba(0,0,0,.08)}
+.view{display:none}.view.active{display:block}
+.widget-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.widget{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);backdrop-filter:blur(25px);min-height:140px;position:relative}
+.widget.wide{grid-column:span 2}
+.widget.dragging{opacity:.5}
+.kicker{color:var(--muted);font-size:.8rem;font-weight:650}
+.metric{font-size:2.35rem;letter-spacing:-.06em;font-weight:800;margin-top:8px}
+.metric.blue{color:var(--blue)}.metric.green{color:var(--green)}.metric.orange{color:var(--orange)}
+.widget h3{margin:5px 0 0;font-size:1rem}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--muted);margin-right:6px}
+.dot.ok{background:var(--green)}.dot.bad{background:var(--red)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(25px);overflow:hidden}
+.panel-head{padding:17px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}
+.panel-head h2{margin:0;font-size:1.05rem}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search{min-width:260px;flex:1;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:15px;padding:11px 14px;outline:none}
+select,textarea,input[type=number],input[type=text]{border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:12px;padding:9px 11px;outline:none}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:850px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:.88rem}
+th{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:var(--surface2)}
+tr:hover td{background:rgba(120,120,128,.04)}
+.name{font-weight:700}.muted{color:var(--muted)}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:750;background:rgba(120,120,128,.12)}
+.badge.h{color:#0a84ff;background:rgba(10,132,255,.12)}.badge.e{color:#af52de;background:rgba(175,82,222,.12)}
+.badge.warn{color:var(--orange);background:rgba(255,149,0,.13)}.badge.good{color:var(--green);background:rgba(52,199,89,.13)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.ordercard{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.ordercard strong{font-size:1rem}.order-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.empty{padding:36px;text-align:center;color:var(--muted)}
+.fab{position:fixed;right:25px;bottom:25px;border:0;border-radius:999px;background:var(--blue);color:white;padding:13px 17px;font-weight:800;box-shadow:0 10px 30px rgba(0,122,255,.35);z-index:30}
+.basket{position:fixed;right:20px;bottom:78px;width:min(410px,calc(100vw - 40px));max-height:65vh;display:none;flex-direction:column;background:var(--surface2);border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.22);z-index:40}
+.basket.open{display:flex}.basket-head{padding:16px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.basket-body{padding:10px 16px;overflow:auto}.basket-foot{padding:14px 16px;border-top:1px solid var(--line)}
+.basket-item{display:grid;grid-template-columns:1fr 80px 32px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+dialog{border:1px solid var(--line);border-radius:24px;background:var(--surface2);color:var(--text);width:min(650px,calc(100vw - 28px));box-shadow:0 25px 100px rgba(0,0,0,.35);padding:0}
+dialog::backdrop{background:rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+.modal-head,.modal-foot{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.modal-head{border-bottom:1px solid var(--line)}.modal-foot{border-top:1px solid var(--line)}
+.modal-body{padding:18px;max-height:65vh;overflow:auto}.modal-body label{display:block;color:var(--muted);font-size:.78rem;margin:12px 0 5px}
+.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.detail-box{padding:12px;border-radius:15px;background:var(--surface);border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,15px);opacity:0;background:#1d1d1f;color:white;padding:10px 15px;border-radius:999px;transition:.2s;z-index:100;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+.mobilebar{display:none}
+@media(max-width:980px){.widget-grid{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){
+ .shell{display:block}.sidebar{display:none}.content{padding:20px 14px 90px}.top{align-items:flex-start}.top .actions .pill{display:none}
+ .mobilebar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:8px;right:8px;bottom:8px;background:var(--surface);backdrop-filter:blur(25px);border:1px solid var(--line);border-radius:20px;padding:5px;z-index:50;box-shadow:0 12px 45px rgba(0,0,0,.18)}
+ .mobilebar button{border:0;background:transparent;color:var(--muted);font-size:.68rem;padding:7px 2px;border-radius:13px}.mobilebar button.active{background:var(--surface2);color:var(--blue);font-weight:750}
+ .widget-grid{grid-template-columns:1fr 1fr}.widget.wide{grid-column:span 2}.cards{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){.widget-grid{grid-template-columns:1fr}.widget.wide{grid-column:span 1}.segment{width:100%}.segment button{flex:1}.search{min-width:0}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">AB</div><div><b>AssistentBuyer</b><div class="muted" style="font-size:.75rem">Werkstatt · v1.0</div></div></div>
+  <nav class="nav" id="nav">
+    <button data-view="today" class="active">⌂ Heute</button>
+    <button data-view="stock">▦ Lager</button>
+    <button data-view="orders">▤ Bestellen</button>
+    <button data-view="receipts">⇩ Wareneingang</button>
+    <button data-view="history">◷ Verlauf</button>
+    <button data-view="settings">⚙ Einstellungen</button>
+  </nav>
+  <div class="sidebar-foot"><button class="iconbtn" id="themeBtn" style="width:100%">◐ Darstellung</button></div>
+</aside>
+
+<main class="content">
+  <header class="top">
+    <div><h1 id="title">Heute</h1><div class="sub" id="subtitle">Werkstatt auf einen Blick.</div></div>
+    <div class="actions">
+      <div class="segment"><button id="areaH" class="active">Hydraulik</button><button id="areaE">Elektro</button></div>
+      <span class="pill" id="mpPill">MP12N …</span>
+      <button class="iconbtn" id="themeTop">◐</button>
+    </div>
+  </header>
+
+  <section class="view active" id="view-today">
+    <div class="widget-grid" id="widgetGrid">
+      <article class="widget" draggable="true" data-widget="materials"><div class="kicker">Materialien</div><div class="metric blue" id="dMaterials">–</div><h3 id="dArea">Hydraulik / Mechanik</h3></article>
+      <article class="widget" draggable="true" data-widget="need"><div class="kicker">Unter Mindestbestand</div><div class="metric orange" id="dBelow">–</div><h3>Fallback aus Stammdaten</h3></article>
+      <article class="widget" draggable="true" data-widget="orders"><div class="kicker">Offene Bestellungen</div><div class="metric" id="dOrders">–</div><h3>aktive Vorgänge</h3></article>
+      <article class="widget" draggable="true" data-widget="receipts"><div class="kicker">Offene Lieferpositionen</div><div class="metric" id="dReceipts">–</div><h3>noch nicht vollständig geliefert</h3></article>
+      <article class="widget wide" draggable="true" data-widget="mp12n">
+        <div class="kicker">Hänel MP12N · Read only</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:15px"><span id="mpDot" class="dot"></span><div><b id="mpText">prüfe Verbindung…</b><div class="muted" id="mpDetail">MP12N-IP</div></div></div>
+        <div style="margin-top:16px"><button class="btn" id="refreshMP">Aktualisieren</button></div>
+      </article>
+      <article class="widget wide" draggable="true" data-widget="mail">
+        <div class="kicker">Bestellsicherheit</div><div class="metric green" id="dMail">–</div><h3>Artikel mit freigegebener Mail-Bezeichnung</h3>
+      </article>
+    </div>
+    <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Schnellzugriff</h2></div><div style="padding:15px;display:flex;gap:9px;flex-wrap:wrap">
+      <button class="btn primary" onclick="go('stock');setTimeout(()=>document.getElementById('materialSearch').focus(),50)">Material suchen</button>
+      <button class="btn" onclick="go('orders')">Bestellungen</button><button class="btn" onclick="go('receipts')">Wareneingang</button>
+    </div></div>
+  </section>
+
+  <section class="view" id="view-stock">
+    <div class="toolbar"><input class="search" id="materialSearch" placeholder="Artikel, Artikelnummer, Hersteller, Lieferant …"><button class="btn" id="belowToggle">Mindestbestand</button></div>
+    <div class="panel"><div class="panel-head"><h2>Materialstamm</h2><span class="muted" id="materialCount"></span></div>
+      <div class="tablewrap"><table><thead><tr><th>Material</th><th>Nr.</th><th>Bereich</th><th>Bestand</th><th>Min.</th><th>Lagerort</th><th>Hersteller / Lieferant</th><th></th></tr></thead><tbody id="materialRows"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-orders">
+    <div class="toolbar"><button class="btn primary" id="openBasket">Bestellkorb <span id="basketCount">0</span></button><button class="btn" id="refreshOrders">Aktualisieren</button></div>
+    <div class="cards" id="orderCards"></div>
+  </section>
+
+  <section class="view" id="view-receipts"><div class="cards" id="receiptCards"></div></section>
+
+  <section class="view" id="view-history"><div class="panel"><div class="panel-head"><h2>Vorgangsverlauf</h2><button class="btn" id="refreshHistory">Aktualisieren</button></div><div id="historyList"></div></div></section>
+
+  <section class="view" id="view-settings">
+    <div class="panel"><div class="panel-head"><h2>System</h2></div><div style="padding:18px;max-width:650px">
+      <label class="muted">MP12N-Adresse</label><input type="text" id="mpUrl" style="width:100%;margin:6px 0 14px">
+      <div class="detail-box"><b>MP12N-Modus: READ ONLY</b><div class="muted" style="margin-top:5px">AssistentBuyer v1.0 sendet zur MP12N ausschließlich HTTP-GET. Keine Fahrbefehle, keine Artikeländerungen und keine Bestandsbuchungen.</div></div>
+      <div style="margin-top:14px"><button class="btn primary" id="saveSettings">Speichern</button> <button class="btn" id="backupBtn">Backup JSON</button></div>
+      <div class="muted" id="appInfo" style="margin-top:18px"></div>
+    </div></div>
+  </section>
+</main>
+</div>
+
+<nav class="mobilebar" id="mobileNav">
+  <button data-view="today" class="active">⌂<br>Heute</button><button data-view="stock">▦<br>Lager</button><button data-view="orders">▤<br>Bestellen</button><button data-view="receipts">⇩<br>Eingang</button><button data-view="history">◷<br>Verlauf</button><button data-view="settings">⚙<br>Setup</button>
+</nav>
+
+<button class="fab" id="basketFab">Bestellkorb · <span id="basketFabCount">0</span></button>
+<aside class="basket" id="basket">
+ <div class="basket-head"><b>Bestellkorb</b><button class="iconbtn" id="closeBasket">×</button></div>
+ <div class="basket-body" id="basketBody"></div>
+ <div class="basket-foot"><label class="muted">Lieferant (optional)</label><input id="basketSupplier" type="text" style="width:100%;margin:5px 0 10px" placeholder="bei leerer Eingabe automatisch, wenn eindeutig"><button class="btn primary" id="createOrder" style="width:100%">Bestellung anlegen</button></div>
+</aside>
+
+<dialog id="materialDialog"><div class="modal-head"><b id="materialTitle">Material</b><button class="iconbtn" onclick="materialDialog.close()">×</button></div><div class="modal-body" id="materialDetail"></div><div class="modal-foot"><span></span><button class="btn primary" id="materialAdd">Zum Bestellkorb</button></div></dialog>
+<dialog id="orderDialog"><div class="modal-head"><b id="orderTitle">Bestellung</b><button class="iconbtn" onclick="orderDialog.close()">×</button></div><div class="modal-body" id="orderDetail"></div><div class="modal-foot"><button class="btn" id="draftBtn">Bestelltext</button><button class="btn good" id="receiveBtn">Wareneingang</button></div></dialog>
+<dialog id="receiveDialog"><div class="modal-head"><b>Wareneingang</b><button class="iconbtn" onclick="receiveDialog.close()">×</button></div><div class="modal-body" id="receiveBody"></div><div class="modal-foot"><span></span><button class="btn good" id="saveReceipt">Buchen</button></div></dialog>
+<dialog id="textDialog"><div class="modal-head"><b>Bestelltext</b><button class="iconbtn" onclick="textDialog.close()">×</button></div><div class="modal-body"><textarea id="draftText" style="width:100%;height:280px"></textarea><div class="muted" id="draftWarning"></div></div><div class="modal-foot"><span></span><button class="btn" onclick="navigator.clipboard?.writeText(draftText.value);toast('Kopiert')">Kopieren</button></div></dialog>
+
+<div class="toast" id="toast"></div>
+<script>
+const state={area:localStorage.getItem('ab-area')||'H',view:'today',below:false,basket:JSON.parse(localStorage.getItem('ab-basket')||'[]'),materials:[],currentMaterial:null,currentOrder:null};
+const $=id=>document.getElementById(id);
+const titles={today:['Heute','Werkstatt auf einen Blick.'],stock:['Lager','Material schnell finden und einordnen.'],orders:['Bestellen','Bedarf bündeln und nachvollziehbar bestellen.'],receipts:['Wareneingang','Teil- und Nachlieferungen sicher buchen.'],history:['Verlauf','Änderungen und Vorgänge nachvollziehen.'],settings:['Einstellungen','AssistentBuyer und MP12N-Verbindung.']};
+async function api(url,opt){const r=await fetch(url,opt);if(!r.ok){let t=await r.text();try{t=JSON.parse(t).detail||t}catch{}throw new Error(t)}return r.json()}
+function toast(t){$('toast').textContent=t;$('toast').classList.add('show');clearTimeout(toast.x);toast.x=setTimeout(()=>$('toast').classList.remove('show'),1800)}
+function esc(v){const d=document.createElement('div');d.textContent=v??'';return d.innerHTML}
+function n(v){return v==null?'–':Number(v).toLocaleString('de-DE',{maximumFractionDigits:2})}
+function loc(x){return [x.tray!=null?'T '+x.tray:null,x.compartment!=null?'F '+x.compartment:null,x.depth_compartment!=null?'TF '+x.depth_compartment:null].filter(Boolean).join(' · ')||'–'}
+function applyTheme(v){document.documentElement.dataset.theme=v;localStorage.setItem('ab-theme',v)}
+applyTheme(localStorage.getItem('ab-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));
+function toggleTheme(){applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+$('themeBtn').onclick=toggleTheme;$('themeTop').onclick=toggleTheme;
+function setArea(a){state.area=a;localStorage.setItem('ab-area',a);$('areaH').classList.toggle('active',a==='H');$('areaE').classList.toggle('active',a==='E');loadCurrent()}
+$('areaH').onclick=()=>setArea('H');$('areaE').onclick=()=>setArea('E');setArea(state.area);
+function go(v){state.view=v;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$('title').textContent=titles[v][0];$('subtitle').textContent=titles[v][1];loadCurrent()}
+window.go=go;document.querySelectorAll('[data-view]').forEach(x=>x.onclick=()=>go(x.dataset.view));
+async function loadDashboard(){const d=await api('/api/dashboard?area='+state.area);$('dMaterials').textContent=d.materials;$('dBelow').textContent=d.belowMinFallback;$('dOrders').textContent=d.openOrders;$('dReceipts').textContent=d.openDeliveryItems;$('dMail').textContent=d.mailReady;$('dArea').textContent=state.area==='H'?'Hydraulik / Mechanik':'Elektrotechnik'}
+async function checkMP(){try{const s=await api('/api/haenel/status');const ok=s.mp12n==='reachable';$('mpDot').className='dot '+(ok?'ok':'bad');$('mpText').textContent=ok?'MP12N erreichbar':'MP12N nicht erreichbar';$('mpDetail').textContent=ok?`${s.baseUrl} · ${s.latencyMs} ms`:(s.detail||s.baseUrl);$('mpPill').textContent=ok?'MP12N online':'MP12N offline'}catch(e){$('mpDot').className='dot bad';$('mpText').textContent='Bridge-Fehler';$('mpDetail').textContent=e.message;$('mpPill').textContent='MP12N ?'}}
+$('refreshMP').onclick=checkMP;
+let searchTimer;
+$('materialSearch').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(loadMaterials,180)};
+$('belowToggle').onclick=()=>{state.below=!state.below;$('belowToggle').classList.toggle('primary',state.below);loadMaterials()};
+async function loadMaterials(){const q=encodeURIComponent($('materialSearch').value||'');const d=await api(`/api/materials?area=${state.area}&q=${q}&belowMin=${state.below}&limit=300`);state.materials=d.items;$('materialCount').textContent=`${d.count} Treffer`;$('materialRows').innerHTML=d.items.length?d.items.map(x=>`<tr><td><div class="name">${esc(x.article_name)}</div><div class="muted">${esc(x.manufacturer_name||'')}</div></td><td>${esc(x.article_number||'–')}</td><td><span class="badge ${x.area.toLowerCase()}">${x.area}</span></td><td>${x.belowMin?'<span class="badge warn">'+n(x.total_stock)+'</span>':n(x.total_stock)}</td><td>${n(x.min_stock)}</td><td>${loc(x)}</td><td>${esc(x.manufacturer||'–')}<div class="muted">${esc(x.supplier||'')}</div></td><td><button class="btn" onclick="showMaterial(${x.id})">Öffnen</button></td></tr>`).join(''):'<tr><td colspan="8" class="empty">Keine Treffer.</td></tr>'}
+async function showMaterial(id){const x=await api('/api/materials/'+id);state.currentMaterial=x;$('materialTitle').textContent=x.article_name;$('materialDetail').innerHTML=`<div class="detail-grid"><div class="detail-box"><div class="kicker">Artikelnummer</div><b>${esc(x.article_number||'–')}</b></div><div class="detail-box"><div class="kicker">Lagerort</div><b>${loc(x)}</b></div><div class="detail-box"><div class="kicker">Bestand / Minimum</div><b>${n(x.total_stock)} / ${n(x.min_stock)}</b></div><div class="detail-box"><div class="kicker">Bereich</div><b>${x.area==='H'?'Hydraulik / Mechanik':'Elektrotechnik'}</b></div><div class="detail-box"><div class="kicker">Hersteller</div><b>${esc(x.manufacturer||'–')}</b><div class="muted">${esc(x.manufacturer_name||'')}</div></div><div class="detail-box"><div class="kicker">Lieferant</div><b>${esc(x.supplier||'–')}</b><div class="muted">${esc(x.alternate_supplier?('Alternative: '+x.alternate_supplier):'')}</div></div></div><div class="detail-box" style="margin-top:10px"><div class="kicker">Bestellbezeichnung</div><b>${esc(x.mail_name||'Nicht freigegeben')}</b><div style="margin-top:5px"><span class="badge ${x.mail_ready?'good':'warn'}">${x.mail_ready?'Bestelltext freigegeben':'manuelle Prüfung erforderlich'}</span></div></div>`;materialDialog.showModal()}
+window.showMaterial=showMaterial;
+$('materialAdd').onclick=()=>{if(state.currentMaterial){addBasket(state.currentMaterial);materialDialog.close()}};
+function addBasket(x){let b=state.basket.find(i=>i.materialId===x.id);if(b)b.quantity++;else state.basket.push({materialId:x.id,name:x.article_name,articleNumber:x.article_number,supplier:x.supplier||'',quantity:1});saveBasket();toast('Zum Bestellkorb hinzugefügt')}
+function saveBasket(){localStorage.setItem('ab-basket',JSON.stringify(state.basket));renderBasket()}
+function renderBasket(){$('basketCount').textContent=state.basket.length;$('basketFabCount').textContent=state.basket.length;$('basketBody').innerHTML=state.basket.length?state.basket.map((x,i)=>`<div class="basket-item"><div><b>${esc(x.name)}</b><div class="muted">${esc(x.articleNumber||'')}</div></div><input type="number" min="1" step="1" value="${x.quantity}" onchange="state.basket[${i}].quantity=Number(this.value)||1;saveBasket()"><button class="iconbtn" onclick="state.basket.splice(${i},1);saveBasket()">×</button></div>`).join(''):'<div class="empty">Bestellkorb ist leer.</div>'}
+$('basketFab').onclick=$('openBasket').onclick=()=>{$('basket').classList.add('open');renderBasket()};$('closeBasket').onclick=()=>$('basket').classList.remove('open');
+$('createOrder').onclick=async()=>{if(!state.basket.length)return toast('Bestellkorb ist leer');try{const p={supplier:$('basketSupplier').value.trim()||null,area:state.area,items:state.basket.map(x=>({materialId:x.materialId,quantity:x.quantity,unit:'Stk'}))};const r=await api('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});state.basket=[];saveBasket();$('basket').classList.remove('open');toast('Bestellung '+r.id+' angelegt');go('orders')}catch(e){alert(e.message)}};
+async function loadOrders(){const d=await api('/api/orders?area='+state.area);$('orderCards').innerHTML=d.length?d.map(orderCard).join(''):'<div class="empty">Noch keine Bestellungen in diesem Bereich.</div>';return d}
+function orderCard(o){const open=Math.max(0,Number(o.qty_ordered)-Number(o.qty_received));return `<article class="ordercard"><div style="display:flex;justify-content:space-between;gap:10px"><strong>${esc(o.id)}</strong><span class="badge ${o.status==='Geliefert'?'good':o.status==='Teilgeliefert'?'warn':''}">${esc(o.status)}</span></div><div class="muted" style="margin-top:5px">${esc(o.supplier||'Lieferant offen')}</div><div class="order-meta"><span class="badge">${o.item_count} Pos.</span><span class="badge">${n(open)} offen</span><span class="badge ${String(o.area||'').toLowerCase()}">${esc(o.area||'–')}</span></div><div style="margin-top:12px"><button class="btn" onclick="showOrder('${o.id}')">Öffnen</button></div></article>`}
+$('refreshOrders').onclick=loadOrders;
+async function loadReceipts(){const d=await api('/api/orders?area='+state.area);const open=d.filter(x=>x.status!=='Geliefert'&&x.status!=='Storniert');$('receiptCards').innerHTML=open.length?open.map(o=>`<article class="ordercard"><strong>${esc(o.id)}</strong><div class="muted">${esc(o.supplier||'Lieferant offen')} · ${esc(o.status)}</div><div class="order-meta"><span class="badge warn">${n(Number(o.qty_ordered)-Number(o.qty_received))} offen</span></div><div style="margin-top:12px"><button class="btn good" onclick="showOrder('${o.id}',true)">Wareneingang</button></div></article>`).join(''):'<div class="empty">Keine offenen Lieferungen.</div>'}
+async function showOrder(id,receipt=false){const d=await api('/api/orders/'+id);state.currentOrder=d;$('orderTitle').textContent=id;$('orderDetail').innerHTML=`<div class="detail-grid"><div class="detail-box"><div class="kicker">Status</div><b>${esc(d.order.status)}</b></div><div class="detail-box"><div class="kicker">Lieferant</div><b>${esc(d.order.supplier||'–')}</b></div></div><div style="margin-top:14px">${d.items.map(x=>`<div class="detail-box" style="margin-bottom:8px"><b>${esc(x.description)}</b><div class="muted">${esc(x.article_number||'')} · bestellt ${n(x.qty_ordered)} · geliefert ${n(x.qty_received)} · offen ${n(Number(x.qty_ordered)-Number(x.qty_received))}</div></div>`).join('')}</div>`;orderDialog.showModal();if(receipt)setTimeout(openReceive,80)}
+window.showOrder=showOrder;
+function openReceive(){if(!state.currentOrder)return;const open=state.currentOrder.items.filter(x=>Number(x.qty_received)<Number(x.qty_ordered));$('receiveBody').innerHTML=open.length?open.map(x=>{const qty=Number(x.qty_ordered)-Number(x.qty_received);return `<div class="detail-box receipt-row" data-id="${x.id}" style="margin-bottom:10px"><b>${esc(x.description)}</b><div class="muted">offen ${n(qty)}</div><label>Menge</label><input class="rq" type="number" min="0" max="${qty}" step="1" value="${qty}" style="width:110px"><label>Verwendung</label><select class="ru"><option value="eingelagert">eingelagert</option><option value="direkt verwendet">direkt verwendet</option><option value="Projekt">Projekt</option><option value="Auftrag">Auftrag</option><option value="nur Erhalt bestätigt">nur Erhalt bestätigt</option></select></div>`}).join(''):'<div class="empty">Alle Positionen vollständig geliefert.</div>';orderDialog.close();receiveDialog.showModal()}
+$('receiveBtn').onclick=openReceive;
+$('saveReceipt').onclick=async()=>{const items=[...document.querySelectorAll('.receipt-row')].map(r=>({orderItemId:Number(r.dataset.id),quantity:Number(r.querySelector('.rq').value),usageType:r.querySelector('.ru').value})).filter(x=>x.quantity>0);if(!items.length)return toast('Keine Menge gewählt');try{await api('/api/orders/'+state.currentOrder.order.id+'/receive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});receiveDialog.close();toast('Wareneingang gebucht');loadReceipts();loadDashboard()}catch(e){alert(e.message)}};
+$('draftBtn').onclick=async()=>{if(!state.currentOrder)return;const d=await api('/api/orders/'+state.currentOrder.order.id+'/draft');$('draftText').value=d.text||'';$('draftWarning').textContent=d.ready?'':`Automatischer Bestelltext gesperrt: ${d.blockedItems.length} Position(en) ohne freigegebene Mail-Bezeichnung.`;orderDialog.close();textDialog.showModal()};
+async function loadHistory(){const d=await api('/api/history?limit=150');$('historyList').innerHTML=d.length?d.map(x=>`<div style="padding:13px 18px;border-bottom:1px solid var(--line)"><b>${esc(x.message)}</b><div class="muted">${esc(x.entity_id||'')} · ${new Date(x.created_at).toLocaleString('de-DE')}</div></div>`).join(''):'<div class="empty">Noch keine lokalen Vorgänge.</div>'}
+$('refreshHistory').onclick=loadHistory;
+async function loadSettings(){const [s,i]=await Promise.all([api('/api/settings'),api('/api/app-info')]);$('mpUrl').value=s.mp12nBaseUrl;$('appInfo').textContent=`Version ${i.version} · Daten: ${i.dataDir}`}
+$('saveSettings').onclick=async()=>{try{await api('/api/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({mp12nBaseUrl:$('mpUrl').value.trim(),defaultArea:state.area})});toast('Gespeichert');checkMP()}catch(e){alert(e.message)}};
+$('backupBtn').onclick=()=>{location.href='/api/backup'};
+async function loadCurrent(){try{if(state.view==='today')await loadDashboard();if(state.view==='stock')await loadMaterials();if(state.view==='orders')await loadOrders();if(state.view==='receipts')await loadReceipts();if(state.view==='history')await loadHistory();if(state.view==='settings')await loadSettings()}catch(e){toast(e.message)}}
+renderBasket();checkMP();loadDashboard();
+// Widget-Reihenfolge lokal speichern
+const grid=$('widgetGrid');let drag=null;
+[...grid.children].forEach(w=>{w.addEventListener('dragstart',()=>{drag=w;w.classList.add('dragging')});w.addEventListener('dragend',()=>{w.classList.remove('dragging');drag=null;localStorage.setItem('ab-widget-order',[...grid.children].map(x=>x.dataset.widget).join(','))});w.addEventListener('dragover',e=>{e.preventDefault();if(!drag||drag===w)return;const r=w.getBoundingClientRect();grid.insertBefore(drag,e.clientY<r.top+r.height/2?w:w.nextSibling)})});
+const order=(localStorage.getItem('ab-widget-order')||'').split(',').filter(Boolean);order.forEach(id=>{const el=grid.querySelector(`[data-widget="${id}"]`);if(el)grid.appendChild(el)});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+</body>
+</html>
