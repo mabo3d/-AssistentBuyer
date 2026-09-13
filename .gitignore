@@ -1,0 +1,59 @@
+# Umgebung
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Lokale Daten (Benutzer-spezifisch)
+AssistentBuyer_Data/
+*.db
+!data/assistentbuyer_seed.db
+
+# Hänel/MP12N (keine produktiven Secrets)
+mp12n_session.json
+mp12n_cookies.txt
+
+# Temporär
+*.tmp
+*.log
+*.bak
+
+# OS
+Thumbs.db
+.DS_Store
