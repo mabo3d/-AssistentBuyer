@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urlsplit
 
 import requests
 import uvicorn
@@ -23,7 +23,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from m2_enhancements import validate_seed_database, validate_runtime_database
+from m2_enhancements import (
+    check_mp12n_response_validity,
+    validate_seed_database,
+    validate_runtime_database,
+)
 
 
 APP_NAME = "AssistentBuyer"
@@ -149,9 +153,34 @@ def mp_session() -> requests.Session:
     return s
 
 
-def mp_get(session: requests.Session, path: str, params: dict[str, str] | None = None):
-    base = setting("mp12n_base_url", "http://MP12N-IP").rstrip("/")
-    url = urljoin(base + "/", path.lstrip("/"))
+def mp_config() -> dict[str, str]:
+    configured_url = setting("mp12n_base_url", "http://MP12N-IP").strip()
+    split = urlsplit(configured_url)
+    origin = f"{split.scheme}://{split.netloc}"
+    bootstrap_path = split.path if split.path not in ("", "/") else "/info/home.pc"
+    return {
+        "configuredUrl": configured_url,
+        "origin": origin,
+        "bootstrapPath": bootstrap_path,
+    }
+
+
+def mp_resolve_url(path: str | None = None, *, bootstrap: bool = False) -> str:
+    config = mp_config()
+    request_path = config["bootstrapPath"] if bootstrap else (path or "/")
+    if not request_path.startswith("/"):
+        request_path = "/" + request_path
+    return f"{config['origin']}{request_path}"
+
+
+def mp_get(
+    session: requests.Session,
+    path: str | None,
+    params: dict[str, str] | None = None,
+    *,
+    bootstrap: bool = False,
+):
+    url = mp_resolve_url(path, bootstrap=bootstrap)
     try:
         r = session.get(url, params=params, timeout=MP_TIMEOUT, allow_redirects=True)
         r.raise_for_status()
@@ -166,6 +195,10 @@ def norm_text(v: str) -> str:
 
 def parse_recommendation_table(html: str) -> tuple[list[dict[str, str]], bool]:
     soup = BeautifulSoup(html, "html.parser")
+    validity = check_mp12n_response_validity(html, endpoint="/info/article.mp")
+    if validity["status"] != "ok":
+        raise HTTPException(status_code=502, detail=str(validity["reason"]))
+
     table = soup.find("table", id="haeneltable")
     if table is None:
         # Fallback: erste Tabelle mit den erwarteten Überschriften.
@@ -204,7 +237,7 @@ def read_recommendations(status_filter: str = "all") -> dict[str, Any]:
 
     s = mp_session()
     try:
-        mp_get(s, "/")
+        mp_get(s, None, bootstrap=True)
     except HTTPException:
         pass
     r = mp_get(s, "/info/article.mp", {
@@ -238,6 +271,38 @@ def read_recommendations(status_filter: str = "all") -> dict[str, Any]:
     }
     _mp_cache[key] = (time.time(), result)
     return result
+
+
+def probe_mp12n(path: str = "/info/article.mp") -> dict[str, Any]:
+    started = time.perf_counter()
+    config = mp_config()
+    s = mp_session()
+    intended_url = mp_resolve_url(path)
+
+    try:
+        r = mp_get(s, path)
+    except HTTPException as exc:
+        return {
+            **config,
+            "finalUrl": intended_url,
+            "httpStatus": None,
+            "latencyMs": round((time.perf_counter() - started) * 1000),
+            "status": "unreachable",
+            "reason": exc.detail,
+        }
+
+    validity = check_mp12n_response_validity(r.text, endpoint=path, final_url=r.url)
+    return {
+        **config,
+        "finalUrl": r.url,
+        "httpStatus": r.status_code,
+        "latencyMs": round((time.perf_counter() - started) * 1000),
+        "title": validity["title"],
+        "tableCount": validity["tableCount"],
+        "status": validity["status"],
+        "reason": validity["reason"],
+        "cookieNames": sorted(cookie.name for cookie in s.cookies),
+    }
 
 
 # ---------------------------------------------------------------------
@@ -663,21 +728,35 @@ def history(limit: int = Query(100, ge=1, le=500)):
 
 @app.get("/api/haenel/status")
 def haenel_status():
-    started = time.perf_counter()
-    s = mp_session()
-    try:
-        r = mp_get(s, "/info/article.mp")
-        return {
-            "bridge": "ok", "mode": "READ_ONLY", "mp12n": "reachable",
-            "baseUrl": setting("mp12n_base_url", ""),
-            "httpStatus": r.status_code,
-            "latencyMs": round((time.perf_counter() - started) * 1000),
-        }
-    except HTTPException as exc:
-        return {
-            "bridge": "ok", "mode": "READ_ONLY", "mp12n": "unreachable",
-            "baseUrl": setting("mp12n_base_url", ""), "detail": exc.detail,
-        }
+    probe = probe_mp12n("/info/article.mp")
+    return {
+        "bridge": "ok",
+        "mode": "READ_ONLY",
+        "status": probe["status"],
+        "mp12n": probe["status"],
+        "httpStatus": probe["httpStatus"],
+        "finalUrl": probe["finalUrl"],
+        "reason": probe["reason"],
+        "latencyMs": probe["latencyMs"],
+    }
+
+
+@app.get("/api/haenel/probe")
+def haenel_probe():
+    probe = probe_mp12n("/info/article.mp")
+    return {
+        "configuredUrl": probe["configuredUrl"],
+        "origin": probe["origin"],
+        "bootstrapPath": probe["bootstrapPath"],
+        "finalUrl": probe["finalUrl"],
+        "httpStatus": probe["httpStatus"],
+        "latencyMs": probe["latencyMs"],
+        "title": probe.get("title", ""),
+        "tableCount": probe.get("tableCount", 0),
+        "status": probe["status"],
+        "reason": probe["reason"],
+        "cookieNames": probe.get("cookieNames", []),
+    }
 
 
 @app.get("/api/haenel/order-recommendations")

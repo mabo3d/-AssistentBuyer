@@ -59,7 +59,7 @@ h1{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.055em;margin:0}
 .metric.blue{color:var(--blue)}.metric.green{color:var(--green)}.metric.orange{color:var(--orange)}
 .widget h3{margin:5px 0 0;font-size:1rem}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--muted);margin-right:6px}
-.dot.ok{background:var(--green)}.dot.bad{background:var(--red)}
+.dot.ok{background:var(--green)}.dot.warn{background:var(--orange)}.dot.bad{background:var(--red)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(25px);overflow:hidden}
 .panel-head{padding:17px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}
 .panel-head h2{margin:0;font-size:1.05rem}
@@ -208,7 +208,7 @@ $('areaH').onclick=()=>setArea('H');$('areaE').onclick=()=>setArea('E');setArea(
 function go(v){state.view=v;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$('title').textContent=titles[v][0];$('subtitle').textContent=titles[v][1];loadCurrent()}
 window.go=go;document.querySelectorAll('[data-view]').forEach(x=>x.onclick=()=>go(x.dataset.view));
 async function loadDashboard(){const d=await api('/api/dashboard?area='+state.area);$('dMaterials').textContent=d.materials;$('dBelow').textContent=d.belowMinFallback;$('dOrders').textContent=d.openOrders;$('dReceipts').textContent=d.openDeliveryItems;$('dMail').textContent=d.mailReady;$('dArea').textContent=state.area==='H'?'Hydraulik / Mechanik':'Elektrotechnik'}
-async function checkMP(){try{const s=await api('/api/haenel/status');const ok=s.mp12n==='reachable';$('mpDot').className='dot '+(ok?'ok':'bad');$('mpText').textContent=ok?'MP12N erreichbar':'MP12N nicht erreichbar';$('mpDetail').textContent=ok?`${s.baseUrl} · ${s.latencyMs} ms`:(s.detail||s.baseUrl);$('mpPill').textContent=ok?'MP12N online':'MP12N offline'}catch(e){$('mpDot').className='dot bad';$('mpText').textContent='Bridge-Fehler';$('mpDetail').textContent=e.message;$('mpPill').textContent='MP12N ?'}}
+async function checkMP(){try{const s=await api('/api/haenel/status');const map={ok:{dot:'ok',text:'MP12N bereit',pill:'MP12N ok'},auth_required:{dot:'warn',text:'MP12N Login/PIN erforderlich',pill:'MP12N Auth'},degraded:{dot:'warn',text:'MP12N Antwort unklar',pill:'MP12N degradiert'},unreachable:{dot:'bad',text:'MP12N nicht erreichbar',pill:'MP12N offline'}};const state=map[s.status]||map.unreachable;$('mpDot').className='dot '+state.dot;$('mpText').textContent=state.text;$('mpDetail').textContent=[s.finalUrl,s.httpStatus!=null?`HTTP ${s.httpStatus}`:null,s.reason,`${s.latencyMs} ms`].filter(Boolean).join(' · ');$('mpPill').textContent=state.pill}catch(e){$('mpDot').className='dot bad';$('mpText').textContent='Bridge-Fehler';$('mpDetail').textContent=e.message;$('mpPill').textContent='MP12N ?'}}
 $('refreshMP').onclick=checkMP;
 let searchTimer;
 $('materialSearch').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(loadMaterials,180)};
