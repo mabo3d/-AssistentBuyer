@@ -1,14 +1,10 @@
 import os
 
 import requests
-from fastapi.testclient import TestClient
 
 os.environ.setdefault("ASSISTENTBUYER_DATA_DIR", "/tmp/assistentbuyer-tests")
 
 import app as app_module
-
-
-client = TestClient(app_module.app)
 
 
 class DummyResponse:
@@ -84,10 +80,9 @@ def test_status_returns_unreachable_on_network_error(monkeypatch):
     monkeypatch.setattr(app_module, "mp_session", lambda: session)
     monkeypatch.setattr(app_module, "setting", mp12n_setting("http://HOST"))
 
-    response = client.get("/api/haenel/status")
+    response = app_module.haenel_status()
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "unreachable"
+    assert response["status"] == "unreachable"
 
 
 def test_status_detects_login_form_as_auth_required(monkeypatch):
@@ -106,10 +101,9 @@ def test_status_detects_login_form_as_auth_required(monkeypatch):
     monkeypatch.setattr(app_module, "mp_session", lambda: session)
     monkeypatch.setattr(app_module, "setting", mp12n_setting("http://HOST"))
 
-    response = client.get("/api/haenel/status")
+    response = app_module.haenel_status()
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "auth_required"
+    assert response["status"] == "auth_required"
 
 
 def test_status_prefers_valid_table_over_pin_text(monkeypatch):
@@ -117,10 +111,9 @@ def test_status_prefers_valid_table_over_pin_text(monkeypatch):
     monkeypatch.setattr(app_module, "mp_session", lambda: session)
     monkeypatch.setattr(app_module, "setting", mp12n_setting("http://HOST"))
 
-    response = client.get("/api/haenel/status")
+    response = app_module.haenel_status()
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response["status"] == "ok"
 
 
 def test_status_returns_degraded_without_auth_or_expected_table(monkeypatch):
@@ -129,10 +122,9 @@ def test_status_returns_degraded_without_auth_or_expected_table(monkeypatch):
     monkeypatch.setattr(app_module, "mp_session", lambda: session)
     monkeypatch.setattr(app_module, "setting", mp12n_setting("http://HOST"))
 
-    response = client.get("/api/haenel/status")
+    response = app_module.haenel_status()
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "degraded"
+    assert response["status"] == "degraded"
 
 
 def test_mp_get_uses_origin_for_data_path_when_bootstrap_url_is_configured(monkeypatch):
