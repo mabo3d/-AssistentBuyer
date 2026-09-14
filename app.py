@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 import uvicorn
@@ -120,6 +120,51 @@ def setting(key: str, default: str = "") -> str:
         return row["value"] if row else default
 
 
+def _format_url_host(hostname: str, port: int | None = None) -> str:
+    host = f"[{hostname}]" if ":" in hostname and not hostname.startswith("[") else hostname
+    return f"{host}:{port}" if port is not None else host
+
+
+def sanitize_url_for_output(url: str) -> str:
+    value = url.strip()
+    if not value:
+        return value
+    parts = urlsplit(value)
+    try:
+        port = parts.port
+    except ValueError:
+        port = None
+    netloc = _format_url_host(parts.hostname, port) if parts.hostname else parts.netloc.rsplit("@", 1)[-1]
+    return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+
+
+def validate_mp12n_base_url(url: str) -> None:
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise ValueError("MP12N-Adresse muss mit http:// oder https:// beginnen")
+    try:
+        _ = parts.port
+    except ValueError as exc:
+        raise ValueError("MP12N-Adresse enthält einen ungültigen Port") from exc
+    if not parts.hostname:
+        raise ValueError("MP12N-Adresse muss einen Host enthalten")
+
+
+def get_mp12n_diagnostics(path: str = "/info/article.mp") -> dict[str, str]:
+    configured_url = setting("mp12n_base_url", "http://MP12N-IP").strip()
+    validate_mp12n_base_url(configured_url)
+    parts = urlsplit(configured_url)
+    origin = urlunsplit((parts.scheme, _format_url_host(parts.hostname or "", parts.port), "", "", ""))
+    final_url = urljoin(configured_url.rstrip("/") + "/", path.lstrip("/"))
+    sanitized_configured = sanitize_url_for_output(configured_url)
+    return {
+        "baseUrl": sanitized_configured,
+        "configuredUrl": sanitized_configured,
+        "origin": origin,
+        "finalUrl": sanitize_url_for_output(final_url),
+    }
+
+
 def audit(event_type: str, entity_type: str, entity_id: str | None, message: str, payload: Any = None):
     with db() as conn:
         conn.execute(
@@ -151,13 +196,17 @@ def mp_session() -> requests.Session:
 
 def mp_get(session: requests.Session, path: str, params: dict[str, str] | None = None):
     base = setting("mp12n_base_url", "http://MP12N-IP").rstrip("/")
+    try:
+        validate_mp12n_base_url(base)
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     url = urljoin(base + "/", path.lstrip("/"))
     try:
         r = session.get(url, params=params, timeout=MP_TIMEOUT, allow_redirects=True)
         r.raise_for_status()
         return r
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"MP12N nicht erreichbar: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"MP12N nicht erreichbar ({exc.__class__.__name__})") from exc
 
 
 def norm_text(v: str) -> str:
@@ -663,20 +712,53 @@ def history(limit: int = Query(100, ge=1, le=500)):
 
 @app.get("/api/haenel/status")
 def haenel_status():
+    configured_url = setting("mp12n_base_url", "http://MP12N-IP")
+    safe_configured_url = sanitize_url_for_output(configured_url)
+    try:
+        diagnostics = get_mp12n_diagnostics("/info/article.mp")
+    except ValueError as exc:
+        return {
+            "bridge": "ok", "mode": "READ_ONLY", "mp12n": "unreachable",
+            "baseUrl": safe_configured_url,
+            "configuredUrl": safe_configured_url,
+            "origin": "",
+            "finalUrl": "",
+            "detail": str(exc),
+        }
     started = time.perf_counter()
     s = mp_session()
     try:
         r = mp_get(s, "/info/article.mp")
         return {
             "bridge": "ok", "mode": "READ_ONLY", "mp12n": "reachable",
-            "baseUrl": setting("mp12n_base_url", ""),
+            **diagnostics,
             "httpStatus": r.status_code,
+            "finalUrl": sanitize_url_for_output(getattr(r, "url", diagnostics["finalUrl"])),
             "latencyMs": round((time.perf_counter() - started) * 1000),
         }
     except HTTPException as exc:
         return {
             "bridge": "ok", "mode": "READ_ONLY", "mp12n": "unreachable",
-            "baseUrl": setting("mp12n_base_url", ""), "detail": exc.detail,
+            **diagnostics,
+            "detail": exc.detail,
+        }
+
+
+@app.get("/api/haenel/probe")
+def haenel_probe():
+    configured_url = setting("mp12n_base_url", "http://MP12N-IP")
+    safe_configured_url = sanitize_url_for_output(configured_url)
+    try:
+        return {"bridge": "ok", "mode": "READ_ONLY", **get_mp12n_diagnostics("/info/article.mp")}
+    except ValueError as exc:
+        return {
+            "bridge": "ok",
+            "mode": "READ_ONLY",
+            "baseUrl": safe_configured_url,
+            "configuredUrl": safe_configured_url,
+            "origin": "",
+            "finalUrl": "",
+            "detail": str(exc),
         }
 
 
@@ -714,8 +796,10 @@ def patch_settings(payload: SettingPatch):
     with db() as conn:
         if payload.mp12nBaseUrl is not None:
             v = payload.mp12nBaseUrl.strip().rstrip("/")
-            if not (v.startswith("http://") or v.startswith("https://")):
-                raise HTTPException(400, "MP12N-Adresse muss mit http:// oder https:// beginnen")
+            try:
+                validate_mp12n_base_url(v)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
             conn.execute(
                 "INSERT INTO settings(key,value) VALUES('mp12n_base_url',?) "
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (v,)
