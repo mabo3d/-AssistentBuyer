@@ -23,6 +23,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from m2_enhancements import validate_seed_database, validate_runtime_database
 
 
 APP_NAME = "AssistentBuyer"
@@ -81,7 +82,20 @@ DB_PATH = DATA_DIR / "assistentbuyer.db"
 if not DB_PATH.exists():
     if not SEED_DB.exists():
         raise RuntimeError(f"Seed-Datenbank fehlt: {SEED_DB}")
+    try:
+        validate_seed_database(SEED_DB)
+    except RuntimeError as e:
+        print(f"FEHLER: Seed-Datenbankvalidierung fehlgeschlagen: {e}")
+        sys.exit(1)
     shutil.copy2(SEED_DB, DB_PATH)
+
+
+try:
+    validate_runtime_database(DB_PATH)
+except RuntimeError as e:
+    print(f"FEHLER: Datenbankvalidierung fehlgeschlagen: {e}")
+    print(f"Datei: {DB_PATH}")
+    sys.exit(1)
 
 
 @contextmanager

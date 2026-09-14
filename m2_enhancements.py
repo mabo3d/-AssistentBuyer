@@ -1,109 +1,103 @@
 """
-M2.1 Release-Gate Enhancements
-- SQLite Database Validation
-- MP12N Robustness Check
+M2.1 Release-Gate Enhancements.
+
+SQLite-Schema (Pflichtspalten):
+    materials: id, article_name, article_number, stock, min_stock, tray, compartment,
+               depth_compartment, package_size, total_stock, manufacturer, manufacturer_name,
+               manufacturer_article_number, model, supplier, mail_name, data_status,
+               manufacturer_source, alternate_supplier, area, mail_ready, version
+    purchase_orders: id, supplier, area, status, note, version, created_at, updated_at
+    purchase_order_items: id, order_id, material_id, article_number, description,
+                          mail_description, qty_ordered, qty_received, unit, status,
+                          note, usage_after_receipt
+    goods_receipts: id, order_item_id, quantity, usage_type, reference, note, received_at
+    settings: key, value
+    audit_log: id, event_type, entity_type, entity_id, message, payload_json, created_at
 """
 
 import sqlite3
 from pathlib import Path
 
 
-def validate_seed_database(seed_db_path: Path) -> None:
-    """
-    Vor Start: Seed-DB auf Integrität und erwartetes Schema prüfen.
-    
-    Raises:
-        RuntimeError: Wenn DB fehlt, beschädigt ist oder Schema nicht vollständig
-    """
-    if not seed_db_path.exists():
-        raise RuntimeError(f"Seed-Datenbank fehlt: {seed_db_path}")
+REQUIRED_SCHEMA: dict[str, set[str]] = {
+    "materials": {
+        "id", "article_name", "article_number", "stock", "min_stock",
+        "tray", "compartment", "depth_compartment", "package_size",
+        "total_stock", "manufacturer", "manufacturer_name",
+        "manufacturer_article_number", "model", "supplier",
+        "mail_name", "data_status", "manufacturer_source",
+        "alternate_supplier", "area", "mail_ready", "version",
+    },
+    "purchase_orders": {
+        "id", "supplier", "area", "status", "note",
+        "version", "created_at", "updated_at",
+    },
+    "purchase_order_items": {
+        "id", "order_id", "material_id", "article_number", "description",
+        "mail_description", "qty_ordered", "qty_received", "unit", "status",
+        "note", "usage_after_receipt",
+    },
+    "goods_receipts": {
+        "id", "order_item_id", "quantity", "usage_type",
+        "reference", "note", "received_at",
+    },
+    "settings": {"key", "value"},
+    "audit_log": {
+        "id", "event_type", "entity_type", "entity_id",
+        "message", "payload_json", "created_at",
+    },
+}
 
-    required_schema = {
-        "materials": {
-            "id", "article_name", "article_number", "stock", "min_stock",
-            "tray", "compartment", "depth_compartment", "package_size",
-            "total_stock", "manufacturer", "manufacturer_name",
-            "manufacturer_article_number", "model", "supplier",
-            "mail_name", "data_status", "manufacturer_source",
-            "alternate_supplier", "area", "mail_ready", "version"
-        },
-        "purchase_orders": {
-            "id", "supplier", "area", "status", "note",
-            "version", "created_at", "updated_at"
-        },
-        "purchase_order_items": {
-            "id", "order_id", "material_id", "article_number",
-            "description", "mail_description", "qty_ordered",
-            "qty_received", "unit", "status", "note",
-            "usage_after_receipt"
-        },
-        "goods_receipts": {
-            "id", "order_item_id", "quantity", "usage_type",
-            "reference", "note", "received_at"
-        },
-        "settings": {
-            "key", "value"
-        },
-        "audit_log": {
-            "id", "event_type", "entity_type", "entity_id",
-            "message", "payload_json", "created_at"
-        },
-    }
+
+def _validate_database(path: Path, *, check_non_empty: bool) -> None:
+    if not path.exists():
+        raise RuntimeError(f"Datenbankdatei fehlt: {path}")
+    if check_non_empty and path.stat().st_size == 0:
+        raise RuntimeError(f"Datenbankdatei ist leer oder beschädigt: {path}")
 
     try:
-        with sqlite3.connect(seed_db_path) as conn:
-            # Prüfe Integrität
+        with sqlite3.connect(path) as conn:
             integrity = conn.execute("PRAGMA integrity_check").fetchone()
-            if not integrity or integrity[0] != "ok":
-                raise RuntimeError(
-                    f"Seed-DB beschädigt (Integrität): {integrity}"
-                )
+            integrity_check_result = integrity[0] if integrity else "unbekannt"
+            if integrity_check_result != "ok":
+                raise RuntimeError(f"Datenbankintegrität beschädigt: {integrity_check_result}")
 
-            # Prüfe Tabellen
             existing_tables = {
                 row[0]
-                for row in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                ).fetchall()
+                for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
             }
-
-            missing_tables = set(required_schema) - existing_tables
+            missing_tables = sorted(set(REQUIRED_SCHEMA) - existing_tables)
             if missing_tables:
-                raise RuntimeError(
-                    "Tabellen fehlen in Seed-DB: "
-                    + ", ".join(sorted(missing_tables))
-                )
+                raise RuntimeError(f"Erforderliche Tabellen fehlen: {missing_tables}")
 
-            # Prüfe Spalten pro Tabelle
-            for table, required_columns in required_schema.items():
+            for table, required_columns in REQUIRED_SCHEMA.items():
                 existing_columns = {
                     row[1]
-                    for row in conn.execute(
-                        f'PRAGMA table_info("{table}")'
-                    ).fetchall()
+                    for row in conn.execute(f'PRAGMA table_info("{table}")').fetchall()
                 }
-
-                missing_columns = required_columns - existing_columns
+                missing_columns = sorted(required_columns - existing_columns)
                 if missing_columns:
                     raise RuntimeError(
-                        f"Spalten fehlen in {table}: "
-                        + ", ".join(sorted(missing_columns))
+                        f"Erforderliche Spalten fehlen in Tabelle {table}: {missing_columns}"
                     )
 
-            # Prüfe Foreign Keys
-            fk_errors = conn.execute(
-                "PRAGMA foreign_key_check"
-            ).fetchall()
-
+            fk_errors = conn.execute("PRAGMA foreign_key_check").fetchall()
             if fk_errors:
-                raise RuntimeError(
-                    f"Foreign-Key-Fehler in Seed-DB: {fk_errors[:10]}"
-                )
-
+                raise RuntimeError(f"Foreign-Key-Fehler (Referenz-Integrität): {fk_errors}")
     except sqlite3.DatabaseError as exc:
-        raise RuntimeError(
-            f"Seed-Datei ist keine gültige SQLite-Datenbank: {seed_db_path}"
-        ) from exc
+        if "file is not a database" in str(exc).lower():
+            raise RuntimeError(
+                f"Datenbankdatei ist beschädigt oder kein SQLite-Format: {path}"
+            ) from exc
+        raise RuntimeError(f"Datenbankdatei ist beschädigt oder kein SQLite-Format: {path}") from exc
+
+
+def validate_seed_database(path: Path) -> None:
+    _validate_database(path, check_non_empty=False)
+
+
+def validate_runtime_database(path: Path) -> None:
+    _validate_database(path, check_non_empty=True)
 
 
 def check_mp12n_response_validity(response_text: str, endpoint: str = "/info/article.mp") -> dict[str, str | bool]:
