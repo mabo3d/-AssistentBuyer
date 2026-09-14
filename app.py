@@ -138,16 +138,23 @@ def sanitize_url_for_output(url: str) -> str:
     return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
 
 
-def validate_mp12n_base_url(url: str) -> None:
+def mp12n_base_url_error(url: str) -> str | None:
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https"):
-        raise ValueError("MP12N-Adresse muss mit http:// oder https:// beginnen")
+        return "MP12N-Adresse muss mit http:// oder https:// beginnen"
     try:
         _ = parts.port
-    except ValueError as exc:
-        raise ValueError("MP12N-Adresse enthält einen ungültigen Port") from exc
+    except ValueError:
+        return "MP12N-Adresse enthält einen ungültigen Port"
     if not parts.hostname:
-        raise ValueError("MP12N-Adresse muss einen Host enthalten")
+        return "MP12N-Adresse muss einen Host enthalten"
+    return None
+
+
+def validate_mp12n_base_url(url: str) -> None:
+    error = mp12n_base_url_error(url)
+    if error:
+        raise ValueError(error)
 
 
 def get_mp12n_diagnostics(path: str = "/info/article.mp") -> dict[str, str]:
@@ -714,17 +721,17 @@ def history(limit: int = Query(100, ge=1, le=500)):
 def haenel_status():
     configured_url = setting("mp12n_base_url", "http://MP12N-IP")
     safe_configured_url = sanitize_url_for_output(configured_url)
-    try:
-        diagnostics = get_mp12n_diagnostics("/info/article.mp")
-    except ValueError as exc:
+    error = mp12n_base_url_error(configured_url)
+    if error:
         return {
             "bridge": "ok", "mode": "READ_ONLY", "mp12n": "unreachable",
             "baseUrl": safe_configured_url,
             "configuredUrl": safe_configured_url,
             "origin": "",
             "finalUrl": "",
-            "detail": str(exc),
+            "detail": error,
         }
+    diagnostics = get_mp12n_diagnostics("/info/article.mp")
     started = time.perf_counter()
     s = mp_session()
     try:
@@ -748,9 +755,8 @@ def haenel_status():
 def haenel_probe():
     configured_url = setting("mp12n_base_url", "http://MP12N-IP")
     safe_configured_url = sanitize_url_for_output(configured_url)
-    try:
-        return {"bridge": "ok", "mode": "READ_ONLY", **get_mp12n_diagnostics("/info/article.mp")}
-    except ValueError as exc:
+    error = mp12n_base_url_error(configured_url)
+    if error:
         return {
             "bridge": "ok",
             "mode": "READ_ONLY",
@@ -758,8 +764,9 @@ def haenel_probe():
             "configuredUrl": safe_configured_url,
             "origin": "",
             "finalUrl": "",
-            "detail": str(exc),
+            "detail": error,
         }
+    return {"bridge": "ok", "mode": "READ_ONLY", **get_mp12n_diagnostics("/info/article.mp")}
 
 
 @app.get("/api/haenel/order-recommendations")
