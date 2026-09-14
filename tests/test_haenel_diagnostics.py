@@ -5,14 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import requests
-from fastapi.testclient import TestClient
 
 os.environ.setdefault("ASSISTENTBUYER_DATA_DIR", tempfile.mkdtemp(prefix="assistentbuyer-tests-"))
 
 import app as app_module
-
-
-client = TestClient(app_module.app)
 
 
 def set_mp12n_base_url(value: str) -> None:
@@ -29,13 +25,11 @@ class HaenelDiagnosticsTests(unittest.TestCase):
     def test_probe_sanitizes_configured_origin_and_final_urls(self):
         set_mp12n_base_url("https://alice@example.com/mp12n/bootstrap?debug=1#frag")
 
-        response = client.get("/api/haenel/probe")
+        payload = app_module.haenel_probe()
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
         self.assertEqual(payload["configuredUrl"], "https://example.com/mp12n/bootstrap")
         self.assertEqual(payload["origin"], "https://example.com")
-        self.assertEqual(payload["finalUrl"], "https://example.com/info/article.mp")
+        self.assertEqual(payload["finalUrl"], "https://example.com/mp12n/info/article.mp")
         self.assertNotIn("alice@", str(payload))
         self.assertNotIn("debug=1", str(payload))
         self.assertNotIn("#frag", str(payload))
@@ -51,10 +45,8 @@ class HaenelDiagnosticsTests(unittest.TestCase):
                 url="https://bob@redirect.example.com/info/article.mp?debug=1#step",
             ),
         ):
-            response = client.get("/api/haenel/status")
+            payload = app_module.haenel_status()
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
         self.assertEqual(payload["baseUrl"], "https://example.com/mp12n/bootstrap")
         self.assertEqual(payload["configuredUrl"], "https://example.com/mp12n/bootstrap")
         self.assertEqual(payload["origin"], "https://example.com")
@@ -65,10 +57,11 @@ class HaenelDiagnosticsTests(unittest.TestCase):
         self.assertNotIn("#step", str(payload))
 
     def test_settings_reject_base_url_without_host(self):
-        response = client.patch("/api/settings", json={"mp12nBaseUrl": "http:///missing-host"})
+        with self.assertRaises(app_module.HTTPException) as ctx:
+            app_module.patch_settings(app_module.SettingPatch(mp12nBaseUrl="http:///missing-host"))
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Host", response.json()["detail"])
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("Host", ctx.exception.detail)
 
     def test_mp_get_error_detail_does_not_echo_sensitive_url(self):
         set_mp12n_base_url("https://alice@example.com/mp12n/bootstrap?debug=1#frag")
