@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4ef">
+  <meta name="description" content="Cozmos Smart-PET-Dashboard – ein deutschsprachiger Prototyp im Simulationsmodus.">
+  <title>Cozmo – Mein Smart-PET</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Hauptnavigation">
+      <a class="brand" href="#" aria-label="Cozmo Smart-PET Startseite">
+        <span class="brand-mark" aria-hidden="true">✳</span>
+        <span>cozmo<span class="brand-light">.pet</span></span>
+      </a>
+      <p class="nav-label">Zuhause</p>
+      <nav>
+        <a class="nav-item active" href="#start" aria-current="page"><span aria-hidden="true">⌂</span> Übersicht</a>
+        <a class="nav-item" href="#erinnerungen"><span aria-hidden="true">♡</span> Erinnerungen</a>
+        <a class="nav-item" href="#entdecken"><span aria-hidden="true">⌖</span> Entdeckungen</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="mini-pet" aria-hidden="true">🤖</div>
+        <div><strong>Dein Cozmo</strong><span>ist neugierig auf dich</span></div>
+        <span class="online-dot" title="Simulation aktiv"></span>
+      </div>
+    </aside>
+
+    <main id="start">
+      <header class="topbar">
+        <div><span class="eyebrow">DEIN ALLTAGSBEGLEITER</span><h1>Hallo, Alex <span aria-hidden="true">☀️</span></h1></div>
+        <div class="topbar-right">
+          <span class="simulation-tag"><span></span> DEMO · SIMULATION</span>
+          <button class="avatar" type="button" aria-label="Profil">A</button>
+        </div>
+      </header>
+
+      <section class="hero" aria-labelledby="pet-title">
+        <div class="hero-copy">
+          <span class="status-label"><span class="online-dot"></span> Wach &amp; bereit</span>
+          <h2 id="pet-title">Cozmo ist heute<br><span id="mood-word">neugierig</span>.</h2>
+          <p id="mood-description">Er erkundet gerne seine Umgebung. Vielleicht gibt es heute etwas Neues zu entdecken?</p>
+          <div class="hero-actions">
+            <button class="button button-primary" type="button" data-action="play">Mit Cozmo spielen <span aria-hidden="true">↗</span></button>
+            <button class="button button-quiet" type="button" data-action="explore">Erkunden lassen</button>
+          </div>
+          <p class="hero-note"><span aria-hidden="true">✦</span> Jede Begegnung prägt Cozmos Persönlichkeit.</p>
+        </div>
+        <div class="pet-stage" aria-label="Illustration eines kleinen Roboters">
+          <div class="sun-glow"></div>
+          <span class="spark spark-one" aria-hidden="true">✦</span>
+          <span class="spark spark-two" aria-hidden="true">✧</span>
+          <div class="pet-shadow"></div>
+          <div class="robot" id="robot" aria-hidden="true">
+            <div class="robot-antenna"></div>
+            <div class="robot-head"><span class="eye"></span><span class="eye"></span><span class="mouth"></span></div>
+            <div class="robot-neck"></div>
+            <div class="robot-body"><span class="chest-light"></span></div>
+            <div class="robot-track track-left"></div><div class="robot-track track-right"></div>
+          </div>
+          <div class="stage-caption"><span class="online-dot"></span> Cozmo ist bei dir</div>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="Cozmos aktueller Zustand">
+        <article class="stat-card">
+          <div class="card-heading"><span class="stat-icon energy-icon" aria-hidden="true">ϟ</span><span>Energie</span><span class="card-more" aria-hidden="true">···</span></div>
+          <div class="stat-value"><strong id="energy-value">78</strong><span>%</span><span class="stat-caption" id="energy-caption">Gute Laune, viel Energie</span></div>
+          <div class="meter"><span id="energy-meter" style="width:78%"></span></div>
+        </article>
+        <article class="stat-card">
+          <div class="card-heading"><span class="stat-icon heart-icon" aria-hidden="true">♡</span><span>Persönlichkeit</span><span class="card-more" aria-hidden="true">···</span></div>
+          <div class="trait-list"><span>Neugierig <b>●●●●○</b></span><span>Verspielt <b>●●●○○</b></span></div>
+          <span class="stat-caption">Wächst mit jeder Interaktion</span>
+        </article>
+        <article class="stat-card">
+          <div class="card-heading"><span class="stat-icon place-icon" aria-hidden="true">⌖</span><span>Lieblingsort</span><span class="card-more" aria-hidden="true">···</span></div>
+          <div class="place-name">Am Fenster <span aria-hidden="true">☼</span></div>
+          <span class="stat-caption">Dort hat Cozmo viel zu entdecken</span>
+        </article>
+        <article class="stat-card">
+          <div class="card-heading"><span class="stat-icon face-icon" aria-hidden="true">☺</span><span>Menschen erkannt</span><span class="card-more" aria-hidden="true">···</span></div>
+          <div class="people-row"><div class="people-avatars" aria-hidden="true"><span>A</span><span>M</span><span>+</span></div><strong>2 <small>vertraute Gesichter</small></strong></div>
+          <span class="stat-caption">Cozmo lernt, wer zu seiner Familie gehört</span>
+        </article>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel" id="erinnerungen">
+          <div class="panel-heading"><div><span class="eyebrow">KLEINE MOMENTE</span><h2>Was Cozmo erlebt</h2></div><a href="#erinnerungen" class="text-link">Alle Erinnerungen <span aria-hidden="true">→</span></a></div>
+          <div class="memory-list" id="memory-list" aria-live="polite">
+            <div class="memory-item"><span class="memory-icon memory-sun" aria-hidden="true">☼</span><div><strong>Am Fenster etwas entdeckt</strong><span>Heute, 10:42 · Wohnzimmer</span></div><span class="memory-star" aria-label="Lieblingserinnerung">✦</span></div>
+            <div class="memory-item"><span class="memory-icon memory-heart" aria-hidden="true">♡</span><div><strong>Mit Alex gespielt</strong><span>Heute, 09:18 · Spielzeit</span></div><span class="memory-star" aria-hidden="true">✧</span></div>
+            <div class="memory-item"><span class="memory-icon memory-place" aria-hidden="true">⌖</span><div><strong>Seinen Lieblingsort besucht</strong><span>Gestern, 17:30 · Am Fenster</span></div><span class="memory-star" aria-hidden="true">✧</span></div>
+          </div>
+        </article>
+        <article class="panel explore-panel" id="entdecken">
+          <div class="panel-heading"><div><span class="eyebrow">NEUGIERIGER KLEINER KERL</span><h2>Eine neue Runde?</h2></div><span class="explore-emoji" aria-hidden="true">🧭</span></div>
+          <p>Lass Cozmo seine Umgebung erkunden und neue Lieblingsplätze entdecken.</p>
+          <button class="button button-outline" type="button" data-action="explore">Erkundung starten <span aria-hidden="true">→</span></button>
+          <button class="charge-link" type="button" data-action="charge"><span aria-hidden="true">ϟ</span> Cozmo zum Laden schicken</button>
+        </article>
+      </section>
+      <footer>Ein liebevoller Prototyp für Cozmo <span>·</span> Noch ohne Verbindung zum echten Roboter</footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
