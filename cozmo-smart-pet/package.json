@@ -1,0 +1,6 @@
+{
+  "name": "cozmo-smart-pet",
+  "version": "1.0.0",
+  "description": "Deutschsprachiges Smart-PET-Dashboard für Cozmo (Simulation)",
+  "private": true
+}
